@@ -15,8 +15,8 @@ const M = new Date('2026-11-16T12:00:00Z'); // « maintenant » figé : résulta
 const iso = (jours) => (jours === null ? null : new Date(M.getTime() - jours * JOUR).toISOString());
 let numero = 0;
 /** Ticket de test ; cree / maj = nombre de jours avant M (null = pas de date). */
-const t = ({ statut = 'En cours', cree = 1, maj = null, assigne = 'Léa', categorie = 'Support', titre = 'T' } = {}) =>
-  ({ id: `TK-${++numero}`, titre, statut, assigne, categorie, creeLe: iso(cree), majLe: iso(maj) });
+const t = ({ statut = 'En cours', cree = 1, maj = null, assigne = 'Léa', categorie = 'Support', titre = 'T', priorite = 'Moyenne' } = {}) =>
+  ({ id: `TK-${++numero}`, titre, statut, priorite, assigne, categorie, creeLe: iso(cree), majLe: iso(maj) });
 const titres = (liste) => json(liste).map((x) => x.titre);
 
 const STATUTS = ['À valider', 'Validé', 'En cours', 'Bloqué', 'Terminé', 'Rejeté'];
@@ -121,4 +121,41 @@ test('statutParPersonne : Non assigné et Hors référentiel seulement si prése
 
 test('echapper neutralise le HTML', () => {
   assert.strictEqual(ctx.echapper('<img onerror="x">&\''), '&lt;img onerror=&quot;x&quot;&gt;&amp;&#39;');
+});
+
+// --- Vue Graphe (étape 5) ---
+
+test('brancher par statut : ordre du référentiel, branches vides omises, inconnu en Hors référentiel', () => {
+  const liste = [
+    t({ statut: 'Bloqué' }), t({ statut: 'En cours', priorite: 'Haute' }), t({ statut: 'En cours' }), t({ statut: 'Fini' }),
+  ];
+  const b = json(ctx.brancher(liste, 'statut', STATUTS, 'Sans statut', M));
+  assert.deepStrictEqual(b.map((x) => x.nom), ['En cours', 'Bloqué', 'Hors référentiel']);
+  assert.deepStrictEqual(b.map((x) => x.n), [2, 1, 1]);
+  assert.strictEqual(b[0].hautes, 1);
+  assert.strictEqual(b[1].bloques, 1);
+  assert.strictEqual(b[0].tickets.length, 2);
+});
+
+test('brancher trie les cartes par priorité puis ancienneté', () => {
+  const liste = [
+    t({ priorite: 'Basse', cree: 50, titre: 'Basse 50' }), t({ priorite: 'Haute', cree: 2, titre: 'Haute 2' }),
+    t({ priorite: 'Haute', cree: 10, titre: 'Haute 10' }), t({ priorite: 'Moyenne', cree: 5, titre: 'Moyenne 5' }),
+    t({ priorite: 'Haute', cree: null, titre: 'Haute sans date' }),
+  ];
+  const [branche] = json(ctx.brancher(liste, 'statut', STATUTS, 'Sans statut', M));
+  assert.deepStrictEqual(branche.tickets.map((x) => x.titre), ['Haute 10', 'Haute 2', 'Haute sans date', 'Moyenne 5', 'Basse 50']);
+});
+
+test('brancher par personne : assigné vide en Non assigné', () => {
+  const b = json(ctx.brancher([t({ assigne: 'Léa' }), t({ assigne: '' })], 'assigne', ['Léa', 'Théo'], 'Non assigné', M));
+  assert.deepStrictEqual(b.map((x) => x.nom), ['Léa', 'Non assigné']);
+});
+
+test('repartir équilibre les côtés', () => {
+  const br = (...ns) => ns.map((n, i) => ({ nom: 'b' + i, n }));
+  const noms = (r) => ({ gauche: r.gauche.map((x) => x.n), droite: r.droite.map((x) => x.n) });
+  assert.deepStrictEqual(noms(json(ctx.repartir(br(3, 5, 1, 4)))), { gauche: [4, 3], droite: [5, 1] });
+  assert.deepStrictEqual(noms(json(ctx.repartir(br(2, 2)))), { gauche: [2], droite: [2] });
+  assert.deepStrictEqual(noms(json(ctx.repartir([]))), { gauche: [], droite: [] });
 });

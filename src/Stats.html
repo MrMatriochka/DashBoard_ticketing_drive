@@ -102,4 +102,35 @@
       })),
     };
   }
+
+  /* --- Vue Graphe --- */
+  const RANG_PRIORITE = { Haute: 0, Moyenne: 1, Basse: 2 };
+
+  /** Branches non vides de l'arbre ; cartes triées par priorité puis du plus ancien au plus récent. */
+  function brancher(tickets, cle, connus, libelleVide, maintenant) {
+    const rang = (t) => RANG_PRIORITE[t.priorite] ?? 3;
+    const age = (t) => ageJours(t.creeLe, maintenant) ?? -Infinity;
+    const noms = tickets.map((t) => groupe(t[cle], connus, libelleVide));
+    return colonnes(noms, connus, libelleVide)
+      .map((nom) => {
+        const liste = tickets.filter((t, i) => noms[i] === nom).sort((a, b) => rang(a) - rang(b) || age(b) - age(a));
+        return {
+          nom,
+          n: liste.length,
+          hautes: liste.filter((t) => t.priorite === 'Haute').length,
+          bloques: liste.filter((t) => t.statut === 'Bloqué').length,
+          tickets: liste,
+        };
+      })
+      .filter((b) => b.n > 0);
+  }
+
+  /** Plus grosses branches d'abord, chacune du côté le moins chargé (égalité : droite). */
+  function repartir(branches) {
+    const cotes = { gauche: [], droite: [] };
+    const total = (cote) => cotes[cote].reduce((s, b) => s + b.n, 0);
+    [...branches].sort((a, b) => b.n - a.n)
+      .forEach((b) => cotes[total('droite') <= total('gauche') ? 'droite' : 'gauche'].push(b));
+    return cotes;
+  }
 </script>
