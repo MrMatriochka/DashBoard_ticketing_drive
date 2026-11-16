@@ -1,0 +1,42 @@
+<script>
+  /* Fiche — panneau latéral de détail d'un ticket (lecture seule pour l'instant). */
+  let origineFiche = null; // élément qui a ouvert la fiche : il récupère le focus à la fermeture
+
+  const dateFr = (iso) => (iso ? new Date(iso).toLocaleDateString('fr-FR') : '—');
+
+  function ouvrirFiche(ticket, origine) {
+    origineFiche = origine;
+    const champ = (libelle, valeur) => `<dt>${libelle}</dt><dd>${valeur}</dd>`;
+    const texte = (v) => echapper(v || '—');
+    const fiche = document.getElementById('fiche');
+    fiche.innerHTML = `
+      <button type="button" class="fermer" aria-label="Fermer la fiche">×</button>
+      <h2 id="fiche-titre">${texte(ticket.id)}</h2>
+      <p class="fiche-titre">${texte(ticket.titre)}</p>
+      <dl>
+        ${champ('Statut', `<span class="pastille" style="background:${couleurStatut(ticket.statut)}"></span>${texte(ticket.statut)}`)}
+        ${champ('Priorité', texte(ticket.priorite))}
+        ${champ('Catégorie', texte(ticket.categorie))}
+        ${champ('Demandeur', texte(ticket.demandeur))}
+        ${champ('Assigné à', texte(ticket.assigne))}
+        ${champ('Créé le', dateFr(ticket.creeLe))}
+        ${champ('Mis à jour le', dateFr(ticket.majLe))}
+        ${ticket.motif ? champ('Motif', echapper(ticket.motif)) : ''}
+      </dl>
+      <p class="fiche-description">${echapper(ticket.description || '')}</p>`;
+    fiche.querySelector('.fermer').addEventListener('click', fermerFiche);
+    fiche.hidden = false;
+    requestAnimationFrame(() => fiche.classList.add('ouverte'));
+    fiche.querySelector('.fermer').focus();
+  }
+
+  function fermerFiche() {
+    const fiche = document.getElementById('fiche');
+    if (fiche.hidden) return;
+    fiche.classList.remove('ouverte');
+    fiche.hidden = true;
+    if (origineFiche && document.contains(origineFiche)) origineFiche.focus();
+  }
+
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fermerFiche(); });
+</script>

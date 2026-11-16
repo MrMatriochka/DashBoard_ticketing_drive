@@ -41,12 +41,12 @@
 
   /** Squelette des vues, posé une fois les données reçues (structure fixe, aucune donnée du Sheet). */
   function construire() {
+    // Filtres partagés par le Dashboard et le Graphe.
+    document.getElementById('filtres').innerHTML = `
+      <label class="filtre">Personne assignée<select class="field" id="f-personne"></select></label>
+      <label class="filtre">Catégorie<select class="field" id="f-categorie"></select></label>
+      <div class="periodes" role="group" aria-label="Période de création" id="f-periode"></div>`;
     document.getElementById('vue-dashboard').innerHTML = `
-      <div class="filtres">
-        <label class="filtre">Personne assignée<select class="field" id="f-personne"></select></label>
-        <label class="filtre">Catégorie<select class="field" id="f-categorie"></select></label>
-        <div class="periodes" role="group" aria-label="Période de création" id="f-periode"></div>
-      </div>
       <div class="kpis" id="kpis"></div>
       <section class="card comparaison" aria-labelledby="titre-comparaison">
         <h2 id="titre-comparaison">30 derniers jours vs 30 jours précédents</h2>
@@ -104,6 +104,10 @@
     ['dashboard', 'graphe', 'tickets'].forEach((vue) => {
       document.getElementById('vue-' + vue).hidden = vue !== etat.vue;
     });
+    document.getElementById('filtres').hidden = etat.vue === 'tickets';
+    document.querySelectorAll('#f-periode .chip').forEach((chip) => {
+      chip.setAttribute('aria-pressed', String(chip.dataset.periode === String(etat.filtres.periode ?? '')));
+    });
     // ECharts ne sait pas mesurer un conteneur caché : on ne dessine le Dashboard que s'il est visible.
     if (etat.vue === 'dashboard') afficherDashboard();
   }
@@ -115,10 +119,6 @@
     const filtresSansPeriode = { ...filtres, periode: null };
     const visibles = filtrer(tickets, filtres, maintenant);
     const sansPeriode = filtrer(tickets, filtresSansPeriode, maintenant);
-
-    document.querySelectorAll('#f-periode .chip').forEach((chip) => {
-      chip.setAttribute('aria-pressed', String(chip.dataset.periode === String(filtres.periode ?? '')));
-    });
 
     const k = kpis(visibles, sansPeriode, maintenant);
     document.getElementById('kpis').innerHTML = KPI.map(([cle, libelle, classe = '']) => `

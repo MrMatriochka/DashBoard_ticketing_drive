@@ -28,14 +28,19 @@
 
     <p id="etat" role="status"></p>
 
+    <div id="filtres" class="filtres" hidden></div>
+
     <section id="vue-dashboard" hidden></section>
     <section id="vue-graphe" hidden></section>
     <section id="vue-tickets" hidden></section>
   </main>
 
+  <aside id="fiche" class="fiche" aria-labelledby="fiche-titre" hidden></aside>
+
   <?!= include('Vendor') ?>
   <?!= include('Stats') ?>
   <?!= include('Charts') ?>
+  <?!= include('Fiche') ?>
   <?!= include('App') ?>
 </body>
 </html>
