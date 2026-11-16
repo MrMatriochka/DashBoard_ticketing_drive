@@ -15,8 +15,8 @@ const M = new Date('2026-11-16T12:00:00Z'); // « maintenant » figé : résulta
 const iso = (jours) => (jours === null ? null : new Date(M.getTime() - jours * JOUR).toISOString());
 let numero = 0;
 /** Ticket de test ; cree / maj = nombre de jours avant M (null = pas de date). */
-const t = ({ statut = 'En cours', cree = 1, maj = null, assigne = 'Léa', categorie = 'Support', titre = 'T', priorite = 'Moyenne' } = {}) =>
-  ({ id: `TK-${++numero}`, titre, statut, priorite, assigne, categorie, creeLe: iso(cree), majLe: iso(maj) });
+const t = ({ statut = 'En cours', cree = 1, maj = null, assigne = 'Léa', categorie = 'Support', titre = 'T', priorite = 'Moyenne', description = '', anomalies = [] } = {}) =>
+  ({ id: `TK-${++numero}`, titre, description, statut, priorite, assigne, categorie, creeLe: iso(cree), majLe: iso(maj), anomalies });
 const titres = (liste) => json(liste).map((x) => x.titre);
 
 const STATUTS = ['À valider', 'Validé', 'En cours', 'Bloqué', 'Terminé', 'Rejeté'];
@@ -158,4 +158,50 @@ test('repartir équilibre les côtés', () => {
   assert.deepStrictEqual(noms(json(ctx.repartir(br(3, 5, 1, 4)))), { gauche: [4, 3], droite: [5, 1] });
   assert.deepStrictEqual(noms(json(ctx.repartir(br(2, 2)))), { gauche: [2], droite: [2] });
   assert.deepStrictEqual(noms(json(ctx.repartir([]))), { gauche: [], droite: [] });
+});
+
+// --- Vue Tickets (chantier 2) ---
+
+test('rechercher ignore la casse et les accents, cherche dans ID, titre et description', () => {
+  const a = { ...t({ titre: "Réinitialiser l'accès" }), id: 'TK-001' };
+  const b = { ...t({ titre: 'Imprimante', description: 'Le 2e étage ne voit plus rien' }), id: 'TK-002' };
+  const titres = (texte) => json(ctx.rechercher([a, b], texte)).map((x) => x.titre);
+  assert.deepStrictEqual(titres('REINITIALISER'), ["Réinitialiser l'accès"]);
+  assert.deepStrictEqual(titres('tk-002'), ['Imprimante']);
+  assert.deepStrictEqual(titres('ETAGE'), ['Imprimante']);
+  assert.deepStrictEqual(titres(''), ["Réinitialiser l'accès", 'Imprimante']);
+});
+
+test('garderPuce et compterPuces', () => {
+  const liste = [...TOUS, t({ statut: 'Terminé', titre: 'à corriger', anomalies: ['ID manquant'] })];
+  assert.deepStrictEqual(json(ctx.compterPuces(liste)), { ouverts: 5, 'a-valider': 2, bloques: 1, tous: 9, 'a-corriger': 1 });
+  assert.deepStrictEqual(titres(ctx.garderPuce(liste, 'a-corriger')), ['à corriger']);
+  assert.strictEqual(ctx.garderPuce(liste, 'ouverts').length, 5);
+  assert.strictEqual(ctx.garderPuce(liste, 'tous').length, 9);
+});
+
+const tri = (liste, cle, sens) => json(ctx.trier(liste, { cle, sens }, STATUTS));
+
+test('trier par priorité : Haute d\'abord, vides en dernier dans les deux sens', () => {
+  const liste = ['Basse', 'Haute', '', 'Moyenne'].map((priorite) => t({ priorite, titre: priorite || 'vide' }));
+  assert.deepStrictEqual(tri(liste, 'priorite', 'asc').map((x) => x.titre), ['Haute', 'Moyenne', 'Basse', 'vide']);
+  assert.deepStrictEqual(tri(liste, 'priorite', 'desc').map((x) => x.titre), ['Basse', 'Moyenne', 'Haute', 'vide']);
+});
+
+test('trier par ID en ordre naturel, sans ID en dernier', () => {
+  const liste = [{ ...t(), id: 'TK-10' }, { ...t(), id: 'TK-2' }, { ...t(), id: null }];
+  assert.deepStrictEqual(tri(liste, 'id', 'asc').map((x) => x.id), ['TK-2', 'TK-10', null]);
+  assert.deepStrictEqual(tri(liste, 'id', 'desc').map((x) => x.id), ['TK-10', 'TK-2', null]);
+});
+
+test('trier par statut selon l\'ordre du référentiel', () => {
+  const liste = ['En cours', 'À valider', 'Bloqué'].map((statut) => t({ statut }));
+  assert.deepStrictEqual(tri(liste, 'statut', 'asc').map((x) => x.statut), ['À valider', 'En cours', 'Bloqué']);
+});
+
+test('trier par âge et par mise à jour : du plus ancien au plus récent, sans date en dernier', () => {
+  const liste = [t({ cree: 5, maj: 1, titre: 'a' }), t({ cree: null, maj: null, titre: 'sans date' }), t({ cree: 30, maj: 10, titre: 'b' })];
+  assert.deepStrictEqual(tri(liste, 'age', 'asc').map((x) => x.titre), ['b', 'a', 'sans date']);
+  assert.deepStrictEqual(tri(liste, 'age', 'desc').map((x) => x.titre), ['a', 'b', 'sans date']);
+  assert.deepStrictEqual(tri(liste, 'maj', 'asc').map((x) => x.titre), ['b', 'a', 'sans date']);
 });

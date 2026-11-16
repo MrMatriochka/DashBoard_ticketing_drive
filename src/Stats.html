@@ -133,4 +133,48 @@
       .forEach((b) => cotes[total('droite') <= total('gauche') ? 'droite' : 'gauche'].push(b));
     return cotes;
   }
+
+  /* --- Vue Tickets --- */
+  /** Minuscules sans accents : « Bloqué » et « BLOQUE » deviennent tous deux « bloque ». */
+  const normaliser = (texte) => String(texte ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+  function rechercher(tickets, texte) {
+    const cherche = normaliser(texte).trim();
+    if (!cherche) return tickets;
+    return tickets.filter((t) => normaliser([t.id, t.titre, t.description].join(' ')).includes(cherche));
+  }
+
+  const PUCES = {
+    ouverts: estOuvert,
+    'a-valider': (t) => t.statut === 'À valider',
+    bloques: (t) => t.statut === 'Bloqué',
+    tous: () => true,
+    'a-corriger': (t) => (t.anomalies || []).length > 0,
+  };
+
+  function garderPuce(tickets, puce) {
+    return tickets.filter(PUCES[puce]);
+  }
+
+  function compterPuces(tickets) {
+    return Object.fromEntries(Object.entries(PUCES).map(([puce, garde]) => [puce, tickets.filter(garde).length]));
+  }
+
+  /** Tri stable ; les valeurs vides restent en dernier quel que soit le sens. */
+  function trier(tickets, { cle, sens }, statuts) {
+    const valeurs = {
+      priorite: (t) => RANG_PRIORITE[t.priorite] ?? null,
+      statut: (t) => (statuts.includes(t.statut) ? statuts.indexOf(t.statut) : null),
+      age: (t) => t.creeLe || null,
+      maj: (t) => t.majLe || null,
+    };
+    const valeur = valeurs[cle] || ((t) => t[cle] || null);
+    const signe = sens === 'desc' ? -1 : 1;
+    return [...tickets].sort((a, b) => {
+      const va = valeur(a), vb = valeur(b);
+      if (va === null || vb === null) return (va === null) - (vb === null);
+      const ecart = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'fr', { numeric: true });
+      return signe * ecart;
+    });
+  }
 </script>
