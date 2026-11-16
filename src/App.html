@@ -1,2 +1,67 @@
 <script>
+  /** État unique de l'application : la vue affichée et les données reçues du serveur. */
+  const etat = { vue: 'dashboard', donnees: null };
+
+  const TEXTES_ATTENTE = {
+    dashboard: 'Dashboard — étape 4',
+    graphe: 'Graphe — étape 5',
+    tickets: 'Tickets — étape 6',
+  };
+
+  /** google.script.run en Promise : appelServeur('getTickets').then(...). */
+  function appelServeur(nomFonction, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[nomFonction](...args);
+    });
+  }
+
+  /** Appel unique au chargement ; en cas d'échec, message lisible + bouton Réessayer. */
+  function charger() {
+    const zone = document.getElementById('etat');
+    zone.textContent = 'Chargement des tickets…';
+    appelServeur('getTickets')
+      .then((donnees) => {
+        etat.donnees = donnees;
+        zone.textContent = '';
+        afficher();
+      })
+      .catch((err) => {
+        zone.textContent = 'Impossible de charger les tickets : ' + err.message + ' ';
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'btn';
+        bouton.textContent = 'Réessayer';
+        bouton.addEventListener('click', charger);
+        zone.appendChild(bouton);
+      });
+  }
+
+  /** Redessine la page à partir de l'état (vue courante + données). */
+  function afficher() {
+    const { tickets, demo } = etat.donnees;
+    document.getElementById('compteur').textContent = `${tickets.length} tickets`;
+    document.getElementById('bandeau-demo').hidden = !demo;
+
+    document.querySelectorAll('.nav button').forEach((bouton) => {
+      if (bouton.dataset.vue === etat.vue) bouton.setAttribute('aria-current', 'page');
+      else bouton.removeAttribute('aria-current');
+    });
+
+    Object.keys(TEXTES_ATTENTE).forEach((vue) => {
+      const section = document.getElementById('vue-' + vue);
+      section.hidden = vue !== etat.vue;
+      section.innerHTML = '<div class="card"><h2></h2><p></p></div>';
+      section.querySelector('h2').textContent = TEXTES_ATTENTE[vue];
+      section.querySelector('p').textContent = `${tickets.length} tickets chargés.`;
+    });
+  }
+
+  document.querySelectorAll('.nav button').forEach((bouton) => {
+    bouton.addEventListener('click', () => {
+      etat.vue = bouton.dataset.vue;
+      if (etat.donnees) afficher();
+    });
+  });
+
+  charger();
 </script>
