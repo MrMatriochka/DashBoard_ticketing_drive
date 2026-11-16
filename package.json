@@ -6,9 +6,11 @@
   "scripts": {
     "push": "clasp push",
     "open": "clasp open-script",
-    "test": "node --test"
+    "test": "node --test",
+    "vendor": "node scripts/vendor.js"
   },
   "devDependencies": {
-    "@types/google-apps-script": "^2.0.0"
+    "@types/google-apps-script": "^2.0.0",
+    "echarts": "6.1.0"
   }
 }
