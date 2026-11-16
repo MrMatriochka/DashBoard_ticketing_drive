@@ -7,3 +7,5 @@ node_modules/
 .idea/
 *.iml
 .DS_Store
+# Fichiers de travail des skills superpowers (maquettes, registres)
+.superpowers/
