@@ -74,3 +74,45 @@ test('Bloqué avec motif → aucune anomalie', () => {
 test('textes nettoyés', () => {
   assert.strictEqual(convertir(ligne({ 2: '  Titre  ' })).titre, 'Titre');
 });
+
+// --- getTickets : faux Sheet minimal (seules les méthodes utilisées par Repository.js) ---
+const fauxSheet = (lignes) => ({
+  getLastRow: () => lignes.length,
+  getRange: (r, c, n, m) => {
+    if (n < 1) throw new Error('Le nombre de lignes de la plage doit être au moins 1.'); // comme Apps Script
+    return { getValues: () => lignes.slice(r - 1, r - 1 + n).map((l) => l.slice(c - 1, c - 1 + m)) };
+  },
+});
+const avecClasseur = (tickets, refs) => {
+  const feuilles = { Tickets: fauxSheet(tickets), 'Référentiels': fauxSheet(refs) };
+  ctx.SpreadsheetApp = { getActive: () => ({ getSheetByName: (nom) => feuilles[nom] }) };
+  return JSON.parse(JSON.stringify(ctx.getTickets()));
+};
+const ENTETE_REFS = ['Personnes', 'Catégories', 'Statuts', 'Priorités'];
+
+test('getTickets : feuille Tickets avec en-tête seul → aucun ticket, pas de démo', () => {
+  const r = avecClasseur([Array(11).fill('en-tête')], [ENTETE_REFS]);
+  assert.deepStrictEqual(r.tickets, []);
+  assert.strictEqual(r.demo, false);
+});
+
+test('getTickets : ligne vide ignorée, numéros de ligne justes, démo détectée', () => {
+  const r = avecClasseur(
+    [Array(11).fill('en-tête'), ligne(), Array(11).fill(''), ligne({ 0: 'TK-002', 3: 'vrai ticket' })],
+    [ENTETE_REFS]
+  );
+  assert.deepStrictEqual(r.tickets.map((t) => t.ligne), [2, 4]);
+  assert.strictEqual(r.demo, true);
+});
+
+test('getTickets : référentiels sans les cellules vides', () => {
+  const r = avecClasseur([Array(11).fill('en-tête')], [
+    ENTETE_REFS,
+    ['Léa Bonnet', 'Données', 'À valider', 'Haute'],
+    ['', 'Support', 'Validé', ''],
+  ]);
+  assert.deepStrictEqual(r.referentiels, {
+    personnes: ['Léa Bonnet'], categories: ['Données', 'Support'],
+    statuts: ['À valider', 'Validé'], priorites: ['Haute'],
+  });
+});

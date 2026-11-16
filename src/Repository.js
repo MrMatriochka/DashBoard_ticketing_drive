@@ -36,6 +36,39 @@ function ligneVersTicket_(valeurs, ligne) {
   return t;
 }
 
+/**
+ * Point d'entrée unique du navigateur : tout ce qu'il faut pour les trois vues, en un appel.
+ * @return {{tickets: Object[], referentiels: Object, demo: boolean}}
+ */
+function getTickets() {
+  const tickets = lireLignes_(SHEET_TICKETS, TICKET_HEADERS.length)
+    .map((valeurs, i) => ligneVersTicket_(valeurs, i + 2))
+    .filter(Boolean);
+  return {
+    tickets,
+    referentiels: lireReferentiels_(),
+    demo: tickets.some((t) => t.description.startsWith(DEMO_PREFIX)),
+  };
+}
+
+function lireReferentiels_() {
+  const lignes = lireLignes_(SHEET_REFS, REF_HEADERS.length);
+  const colonne = (col) => lignes.map((l) => String(l[col - 1]).trim()).filter(Boolean);
+  return {
+    personnes: colonne(REF_COL.PERSONNES),
+    categories: colonne(REF_COL.CATEGORIES),
+    statuts: colonne(REF_COL.STATUTS),
+    priorites: colonne(REF_COL.PRIORITES),
+  };
+}
+
+/** Toutes les lignes sous l'en-tête, en un seul getValues() ; [] si la feuille n'a que l'en-tête. */
+function lireLignes_(nomFeuille, nbColonnes) {
+  const sh = getSheetOrThrow_(nomFeuille);
+  const nb = sh.getLastRow() - 1;
+  return nb < 1 ? [] : sh.getRange(2, 1, nb, nbColonnes).getValues();
+}
+
 /** Date valide → chaîne ISO ; vide, texte ou nombre (collage) → null. */
 function dateIso_(v) {
   return v instanceof Date && !isNaN(v) ? v.toISOString() : null;
