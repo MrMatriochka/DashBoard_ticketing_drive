@@ -30,12 +30,17 @@
     fiche.querySelector('.fermer').focus();
   }
 
-  function fermerFiche() {
+  /** rendreFocus = false quand on quitte la vue : l'élément d'origine n'est plus affiché. */
+  function fermerFiche(rendreFocus = true) {
     const fiche = document.getElementById('fiche');
     if (fiche.hidden) return;
     fiche.classList.remove('ouverte');
     fiche.hidden = true;
-    if (origineFiche && document.contains(origineFiche)) origineFiche.focus();
+    if (!rendreFocus || !origineFiche) return;
+    // Si l'arbre a été redessiné entre-temps, la carte d'origine a été remplacée : on retrouve la nouvelle.
+    const cible = document.contains(origineFiche) ? origineFiche
+      : document.querySelector(`.carte[data-ligne="${origineFiche.dataset.ligne}"]`);
+    if (cible) cible.focus();
   }
 
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fermerFiche(); });

@@ -171,6 +171,7 @@
 
   document.querySelectorAll('.nav button').forEach((bouton) => {
     bouton.addEventListener('click', () => {
+      if (bouton.dataset.vue !== etat.vue) fermerFiche(false);
       etat.vue = bouton.dataset.vue;
       if (etat.donnees) afficher();
     });

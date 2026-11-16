@@ -138,7 +138,7 @@
   .zoom-boutons { display: flex; gap: 8px; margin-left: auto; }
   .btn-icone { width: 40px; padding: 8px 0; }
   .vue-arbre {
-    position: relative; height: 620px; margin-top: 16px; overflow: hidden; border-radius: 14px;
+    position: relative; height: 620px; margin-top: 16px; overflow: clip; border-radius: 14px;
     background: var(--card); box-shadow: var(--inset); cursor: grab; touch-action: none;
   }
   .vue-arbre.en-glissement { cursor: grabbing; }
@@ -156,8 +156,8 @@
   }
   .hub strong { font-size: 30px; font-weight: 600; line-height: 1.1; }
   .branche {
-    display: flex; flex-shrink: 0; flex-direction: column; min-width: 150px; padding: 10px 14px; border: 0; border-radius: 14px;
-    background: var(--c); color: #fff; box-shadow: var(--raised); font: inherit; text-align: left; cursor: zoom-in;
+    display: flex; flex-shrink: 0; flex-direction: column; min-width: 150px; padding: 10px 14px; border: 0; border-left: 8px solid var(--c);
+    border-radius: 14px; background: var(--navy-700); color: #fff; box-shadow: var(--raised); font: inherit; text-align: left; cursor: zoom-in;
   }
   .branche-nom { font-weight: 600; }
   .branche-n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
