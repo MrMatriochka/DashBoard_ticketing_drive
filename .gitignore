@@ -1,0 +1,9 @@
+# Identifiants clasp : propres à chaque machine/compte, jamais dans Git
+.clasp.json
+.clasprc.json
+# Dépendances npm (réinstallables via package.json)
+node_modules/
+# Fichiers IntelliJ
+.idea/
+*.iml
+.DS_Store

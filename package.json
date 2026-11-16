@@ -1,0 +1,13 @@
+{
+  "name": "hub-tickets",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tableau de bord de tickets — Apps Script + Google Sheets",
+  "scripts": {
+    "push": "clasp push",
+    "open": "clasp open-script"
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.0"
+  }
+}
