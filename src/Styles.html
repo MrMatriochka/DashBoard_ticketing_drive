@@ -184,6 +184,47 @@
   .legende i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; }
   @media (max-width: 600px) { .vue-arbre { height: 70vh; } .zoom-boutons { margin-left: 0; } }
 
+  /* Tickets : tableau, cartes sous 600 px */
+  .tickets-outils { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 16px; }
+  #t-recherche { flex: 1 1 260px; width: auto; }
+  .chip-n { margin-left: 4px; font-variant-numeric: tabular-nums; opacity: .8; }
+  .chip-alerte { color: #8A4B00; }
+  .t-tri-mobile { display: none; }
+  .compteur-liste { margin: 12px 2px 0; font-size: 13px; color: var(--text-muted); }
+  .table-defile { overflow-x: auto; }
+  .table-tickets { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 14px; }
+  .table-tickets th { padding: 0 10px; text-align: left; white-space: nowrap; }
+  .tri { padding: 4px 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+  [aria-sort] .tri { color: var(--navy-900); }
+  [aria-sort="ascending"] .tri::after { content: " ▲"; }
+  [aria-sort="descending"] .tri::after { content: " ▼"; }
+  .table-tickets td { padding: 10px; background: var(--card); box-shadow: 0 2px 6px var(--shadow-dark); vertical-align: top; cursor: pointer; }
+  .table-tickets td:first-child { border-left: 5px solid var(--c); border-radius: 10px 0 0 10px; }
+  .table-tickets td:last-child { border-radius: 0 10px 10px 0; }
+  .c-id { font-weight: 600; color: var(--navy-900); white-space: nowrap; }
+  .c-age, .c-maj, .c-statut { white-space: nowrap; color: var(--text-muted); }
+  .lien-ticket { padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--text); text-align: left; cursor: pointer; }
+  .lien-ticket:hover { color: var(--blue-500); text-decoration: underline; }
+  .anomalies { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; color: #8A4B00; }
+  @media (max-width: 600px) {
+    .t-tri-mobile { display: flex; }
+    .table-tickets, .table-tickets tbody { display: block; }
+    .table-tickets thead { display: none; }
+    .table-tickets tr {
+      display: flex; flex-wrap: wrap; gap: 2px 8px; margin-bottom: 10px; padding: 10px 12px; border-left: 5px solid var(--c);
+      border-radius: 12px; background: var(--card); box-shadow: var(--raised);
+    }
+    .table-tickets td, .table-tickets td:first-child, .table-tickets td:last-child { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+    /* Carte : ID et priorité en haut, titre, puis statut · assigné · âge */
+    .c-id { flex: 1; order: 0; }
+    .c-prio { order: 1; font-size: 13px; }
+    .c-titre { flex-basis: 100%; order: 2; }
+    .c-statut, .c-assigne, .c-age { order: 3; }
+    .c-categorie, .c-maj { display: none; }
+    .c-statut, .c-assigne, .c-age { font-size: 13px; color: var(--text-muted); }
+    .c-assigne::before, .c-age::before { content: "· "; }
+  }
+
   /* Fiche : panneau latéral, au-dessus du contenu */
   .fiche {
     position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 360px; overflow: auto; padding: 20px;

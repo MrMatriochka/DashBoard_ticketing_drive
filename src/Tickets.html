@@ -1,0 +1,95 @@
+<script>
+  /* Tickets — tableau cherchable et triable ; le CSS le transforme en cartes sous 600 px. */
+  const PUCES_TICKETS = [
+    ['ouverts', 'Ouverts'], ['a-valider', 'À valider'], ['bloques', 'Bloqués'], ['tous', 'Tous'], ['a-corriger', '⚠ À corriger'],
+  ];
+  const COLONNES_TICKETS = [
+    ['id', 'ID'], ['titre', 'Titre'], ['statut', 'Statut'], ['priorite', 'Priorité'],
+    ['categorie', 'Catégorie'], ['assigne', 'Assigné à'], ['age', 'Âge'], ['maj', 'Mis à jour'],
+  ];
+
+  /** Squelette de la vue, posé une fois (aucune donnée du Sheet). */
+  function construireTickets() {
+    const vue = document.getElementById('vue-tickets');
+    vue.innerHTML = `
+      <div class="tickets-outils">
+        <input type="search" class="field" id="t-recherche" placeholder="Rechercher (ID, titre, description)…" aria-label="Rechercher un ticket">
+        <div class="periodes" role="group" aria-label="Statut des tickets" id="t-puces"></div>
+        <label class="filtre t-tri-mobile">Trier par
+          <select class="field" id="t-tri">${COLONNES_TICKETS.map(([cle, libelle]) => `<option value="${cle}">${libelle}</option>`).join('')}</select>
+        </label>
+      </div>
+      <p class="compteur-liste" id="t-compteur" aria-live="polite"></p>
+      <div class="table-defile">
+        <table class="table-tickets">
+          <thead><tr>${COLONNES_TICKETS.map(([cle, libelle]) =>
+            `<th scope="col" data-cle="${cle}"><button type="button" class="tri" data-cle="${cle}">${libelle}</button></th>`).join('')}</tr></thead>
+          <tbody id="t-lignes"></tbody>
+        </table>
+      </div>
+      <p class="card vide" id="t-vide" hidden>Aucun ticket ne correspond.</p>`;
+
+    const etatListe = etat.tickets;
+    vue.querySelector('#t-recherche').addEventListener('input', (e) => { etatListe.recherche = e.target.value; afficher(); });
+    vue.querySelector('#t-puces').addEventListener('click', (e) => {
+      const puce = e.target.closest('[data-puce]');
+      if (puce) { etatListe.puce = puce.dataset.puce; afficher(); }
+    });
+    vue.querySelector('thead').addEventListener('click', (e) => {
+      const bouton = e.target.closest('.tri');
+      if (!bouton) return;
+      const memeColonne = etatListe.tri.cle === bouton.dataset.cle;
+      etatListe.tri = { cle: bouton.dataset.cle, sens: memeColonne && etatListe.tri.sens === 'asc' ? 'desc' : 'asc' };
+      afficher();
+    });
+    vue.querySelector('#t-tri').addEventListener('change', (e) => { etatListe.tri = { cle: e.target.value, sens: 'asc' }; afficher(); });
+    // Toute la ligne est cliquable ; le bouton du titre la rend accessible au clavier (Entrée).
+    vue.querySelector('#t-lignes').addEventListener('click', (e) => {
+      const ligne = e.target.closest('tr');
+      const ticket = ligne && etat.donnees.tickets.find((t) => String(t.ligne) === ligne.dataset.ligne);
+      if (ticket) ouvrirFiche(ticket, ligne.querySelector('.lien-ticket'));
+    });
+  }
+
+  /** Redessine les puces, l'en-tête et les lignes (appelée par afficher() quand la vue Tickets est visible). */
+  function afficherTickets() {
+    const maintenant = new Date();
+    const { tickets, referentiels } = etat.donnees;
+    const { recherche, puce, tri } = etat.tickets;
+
+    const trouves = rechercher(filtrer(tickets, etat.filtres, maintenant), recherche);
+    const comptes = compterPuces(trouves);
+    document.getElementById('t-puces').innerHTML = PUCES_TICKETS
+      .filter(([cle]) => cle !== 'a-corriger' || comptes[cle] > 0 || puce === cle)
+      .map(([cle, libelle]) => `<button type="button" class="chip${cle === 'a-corriger' ? ' chip-alerte' : ''}" data-puce="${cle}" aria-pressed="${cle === puce}">${libelle} <span class="chip-n">${comptes[cle]}</span></button>`)
+      .join('');
+
+    document.querySelectorAll('.table-tickets th').forEach((th) => {
+      if (th.dataset.cle === tri.cle) th.setAttribute('aria-sort', tri.sens === 'asc' ? 'ascending' : 'descending');
+      else th.removeAttribute('aria-sort');
+    });
+    document.getElementById('t-tri').value = tri.cle;
+
+    const lignes = trier(garderPuce(trouves, puce), tri, referentiels.statuts);
+    document.getElementById('t-compteur').textContent = `${lignes.length} ticket${lignes.length > 1 ? 's' : ''} sur ${tickets.length}`;
+    document.getElementById('t-vide').hidden = lignes.length > 0;
+    document.querySelector('.table-defile').hidden = lignes.length === 0;
+
+    const jours = (iso) => ageJours(iso, maintenant);
+    const misAJour = (j) => (j === null ? '—' : j === 0 ? "aujourd'hui" : `il y a ${j} j`);
+    document.getElementById('t-lignes').innerHTML = lignes.map((t) => `
+      <tr data-ligne="${t.ligne}" style="--c:${couleurStatut(t.statut)}">
+        <td class="c-id">${echapper(t.id || '—')}</td>
+        <td class="c-titre">
+          <button type="button" class="lien-ticket" data-ligne="${t.ligne}">${echapper(t.titre || '(sans titre)')}</button>
+          ${t.anomalies.length ? `<span class="anomalies">⚠ ${echapper(t.anomalies.join(' · '))}</span>` : ''}
+        </td>
+        <td class="c-statut"><span class="pastille" style="background:${couleurStatut(t.statut)}"></span>${echapper(t.statut || '—')}</td>
+        <td class="c-prio${t.priorite === 'Haute' ? ' prio-haute' : ''}">${echapper(t.priorite || '—')}</td>
+        <td class="c-categorie">${echapper(t.categorie || '—')}</td>
+        <td class="c-assigne">${echapper(t.assigne || '—')}</td>
+        <td class="c-age">${jours(t.creeLe) === null ? '—' : jours(t.creeLe) + ' j'}</td>
+        <td class="c-maj">${misAJour(jours(t.majLe))}</td>
+      </tr>`).join('');
+  }
+</script>

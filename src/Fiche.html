@@ -37,9 +37,9 @@
     fiche.classList.remove('ouverte');
     fiche.hidden = true;
     if (!rendreFocus || !origineFiche) return;
-    // Si l'arbre a été redessiné entre-temps, la carte d'origine a été remplacée : on retrouve la nouvelle.
+    // Si l'arbre ou la liste ont été redessinés entre-temps, l'élément d'origine a été remplacé : on retrouve le nouveau.
     const cible = document.contains(origineFiche) ? origineFiche
-      : document.querySelector(`.carte[data-ligne="${origineFiche.dataset.ligne}"]`);
+      : document.querySelector(`:is(.carte, .lien-ticket)[data-ligne="${origineFiche.dataset.ligne}"]`);
     if (cible) cible.focus();
   }
 
