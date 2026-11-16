@@ -5,7 +5,8 @@
   "description": "Tableau de bord de tickets — Apps Script + Google Sheets",
   "scripts": {
     "push": "clasp push",
-    "open": "clasp open-script"
+    "open": "clasp open-script",
+    "test": "node --test"
   },
   "devDependencies": {
     "@types/google-apps-script": "^2.0.0"
