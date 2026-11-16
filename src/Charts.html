@@ -1,0 +1,56 @@
+<script>
+  /* Charts — options ECharts construites à partir des agrégats de Stats.html. Aucun calcul métier ici. */
+  const jeton = (nom) => getComputedStyle(document.documentElement).getPropertyValue(nom).trim();
+  const JETON_STATUT = {
+    'À valider': '--st-a-valider', 'Validé': '--st-valide', 'En cours': '--st-en-cours',
+    'Bloqué': '--st-bloque', 'Terminé': '--st-termine', 'Rejeté': '--st-rejete',
+  };
+  const couleurStatut = (statut) => jeton(JETON_STATUT[statut] || '--text-muted');
+
+  const optionsCommunes = () => ({
+    textStyle: { fontFamily: 'Inter, system-ui, sans-serif', color: jeton('--text') },
+    animationDuration: 300,
+  });
+  const axesBarres = (noms) => ({
+    grid: { left: 8, right: 16, top: 8, bottom: 8, containLabel: true },
+    xAxis: { type: 'value', minInterval: 1 },
+    yAxis: { type: 'category', data: noms, inverse: true },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+  });
+
+  function optionsAnneau(statuts) {
+    return {
+      ...optionsCommunes(),
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, type: 'scroll' },
+      series: [{
+        type: 'pie', radius: ['55%', '80%'], center: ['50%', '44%'], label: { show: false },
+        data: statuts.filter((s) => s.n > 0)
+          .map((s) => ({ name: s.nom, value: s.n, itemStyle: { color: couleurStatut(s.nom) } })),
+      }],
+    };
+  }
+
+  function optionsEmpilees({ personnes, series }) {
+    return {
+      ...optionsCommunes(),
+      ...axesBarres(personnes),
+      grid: { left: 8, right: 16, top: 8, bottom: 36, containLabel: true },
+      legend: { bottom: 0, type: 'scroll' },
+      series: series.map((s) => ({
+        name: s.statut, type: 'bar', stack: 'total', data: s.valeurs, itemStyle: { color: couleurStatut(s.statut) },
+      })),
+    };
+  }
+
+  function optionsCategories(groupes) {
+    return {
+      ...optionsCommunes(),
+      ...axesBarres(groupes.map((g) => g.nom)),
+      series: [{
+        type: 'bar', data: groupes.map((g) => g.n), barMaxWidth: 18,
+        itemStyle: { color: jeton('--blue-500'), borderRadius: [0, 4, 4, 0] },
+      }],
+    };
+  }
+</script>

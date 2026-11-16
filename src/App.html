@@ -1,12 +1,14 @@
 <script>
-  /** État unique de l'application : la vue affichée et les données reçues du serveur. */
-  const etat = { vue: 'dashboard', donnees: null };
+  /** État unique de l'application : vue affichée, données reçues du serveur, filtres du Dashboard. */
+  const etat = { vue: 'dashboard', donnees: null, filtres: { personne: '', categorie: '', periode: null } };
 
-  const TEXTES_ATTENTE = {
-    dashboard: 'Dashboard — étape 4',
-    graphe: 'Graphe — étape 5',
-    tickets: 'Tickets — étape 6',
-  };
+  const TEXTES_ATTENTE = { graphe: 'Graphe — étape 5', tickets: 'Tickets — étape 6' };
+  const PERIODES = [[7, '7 j'], [30, '30 j'], [90, '90 j'], [null, 'Tout']];
+  const KPI = [
+    ['ouverts', 'Ouverts'], ['aValider', 'À valider'], ['enCours', 'En cours'],
+    ['bloques', 'Bloqués', 'alerte'], ['dormants', 'Dormants > 14 j'], ['termines30', 'Terminés (30 j)'],
+  ];
+  const graphiques = {}; // instances ECharts, créées une seule fois
 
   /** google.script.run en Promise : appelServeur('getTickets').then(...). */
   function appelServeur(nomFonction, ...args) {
@@ -23,6 +25,7 @@
       .then((donnees) => {
         etat.donnees = donnees;
         zone.textContent = '';
+        construire();
         afficher();
       })
       .catch((err) => {
@@ -36,25 +39,128 @@
       });
   }
 
-  /** Redessine la page à partir de l'état (vue courante + données). */
+  /** Squelette des vues, posé une fois les données reçues (structure fixe, aucune donnée du Sheet). */
+  function construire() {
+    document.getElementById('vue-dashboard').innerHTML = `
+      <div class="filtres">
+        <label class="filtre">Personne assignée<select class="field" id="f-personne"></select></label>
+        <label class="filtre">Catégorie<select class="field" id="f-categorie"></select></label>
+        <div class="periodes" role="group" aria-label="Période de création" id="f-periode"></div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <section class="card comparaison" aria-labelledby="titre-comparaison">
+        <h2 id="titre-comparaison">30 derniers jours vs 30 jours précédents</h2>
+        <div class="comparaison-lignes" id="comparaison"></div>
+        <p class="note">Solde = terminés − créés : positif, le stock de tickets baisse.</p>
+      </section>
+      <p class="card vide" id="vide" hidden>Aucun ticket pour ces filtres.</p>
+      <div id="blocs">
+        <div class="bloc">
+          <div class="card"><h2>À traiter en priorité</h2><ol class="a-traiter" id="a-traiter"></ol></div>
+          <div class="card"><h2>Par statut</h2><div class="graphique" id="g-anneau"></div></div>
+        </div>
+        <div class="bloc">
+          <div class="card"><h2>Statut × personne assignée</h2><div class="graphique" id="g-empilees"></div></div>
+          <div class="card"><h2>Par catégorie</h2><div class="graphique" id="g-categories"></div></div>
+        </div>
+      </div>`;
+
+    const { personnes, categories } = etat.donnees.referentiels;
+    const remplir = (id, toutes, valeurs, cle) => {
+      const select = document.getElementById(id);
+      select.add(new Option(toutes, ''));
+      valeurs.forEach((v) => select.add(new Option(v, v)));
+      select.addEventListener('change', () => { etat.filtres[cle] = select.value; afficher(); });
+    };
+    remplir('f-personne', 'Toutes', personnes, 'personne');
+    remplir('f-categorie', 'Toutes', categories, 'categorie');
+
+    PERIODES.forEach(([jours, libelle]) => {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.className = 'chip';
+      bouton.textContent = libelle;
+      bouton.dataset.periode = jours ?? '';
+      bouton.addEventListener('click', () => { etat.filtres.periode = jours; afficher(); });
+      document.getElementById('f-periode').appendChild(bouton);
+    });
+
+    Object.entries(TEXTES_ATTENTE).forEach(([vue, texte]) => {
+      document.getElementById('vue-' + vue).innerHTML = '<div class="card"><h2></h2><p></p></div>';
+      document.querySelector(`#vue-${vue} h2`).textContent = texte;
+      document.querySelector(`#vue-${vue} p`).textContent = `${etat.donnees.tickets.length} tickets chargés.`;
+    });
+  }
+
+  /** Redessine la page à partir de l'état (vue courante, données, filtres). */
   function afficher() {
     const { tickets, demo } = etat.donnees;
     document.getElementById('compteur').textContent = `${tickets.length} tickets`;
     document.getElementById('bandeau-demo').hidden = !demo;
-
     document.querySelectorAll('.nav button').forEach((bouton) => {
       if (bouton.dataset.vue === etat.vue) bouton.setAttribute('aria-current', 'page');
       else bouton.removeAttribute('aria-current');
     });
-
-    Object.keys(TEXTES_ATTENTE).forEach((vue) => {
-      const section = document.getElementById('vue-' + vue);
-      section.hidden = vue !== etat.vue;
-      section.innerHTML = '<div class="card"><h2></h2><p></p></div>';
-      section.querySelector('h2').textContent = TEXTES_ATTENTE[vue];
-      section.querySelector('p').textContent = `${tickets.length} tickets chargés.`;
+    ['dashboard', 'graphe', 'tickets'].forEach((vue) => {
+      document.getElementById('vue-' + vue).hidden = vue !== etat.vue;
     });
+    // ECharts ne sait pas mesurer un conteneur caché : on ne dessine le Dashboard que s'il est visible.
+    if (etat.vue === 'dashboard') afficherDashboard();
   }
+
+  function afficherDashboard() {
+    const maintenant = new Date();
+    const { tickets, referentiels } = etat.donnees;
+    const filtres = etat.filtres;
+    const filtresSansPeriode = { ...filtres, periode: null };
+    const visibles = filtrer(tickets, filtres, maintenant);
+    const sansPeriode = filtrer(tickets, filtresSansPeriode, maintenant);
+
+    document.querySelectorAll('#f-periode .chip').forEach((chip) => {
+      chip.setAttribute('aria-pressed', String(chip.dataset.periode === String(filtres.periode ?? '')));
+    });
+
+    const k = kpis(visibles, sansPeriode, maintenant);
+    document.getElementById('kpis').innerHTML = KPI.map(([cle, libelle, classe = '']) => `
+      <div class="card kpi ${classe}"><div class="kpi-valeur">${k[cle]}</div><div class="kpi-libelle">${libelle}</div></div>`).join('');
+
+    const c = comparaison(sansPeriode, maintenant);
+    const ligne = (libelle, { actuel, precedent }, neutre) => {
+      const sens = tendance(actuel, precedent);
+      const ecart = actuel - precedent;
+      const fleche = { hausse: '▲', baisse: '▼', egal: '=' }[sens];
+      const classe = neutre || sens === 'egal' ? '' : sens === 'hausse' ? 'mieux' : 'moins-bien';
+      return `<div class="comp"><span class="kpi-libelle">${libelle}</span>
+        <span class="kpi-valeur">${actuel}</span>
+        <span class="evolution ${classe}">${fleche} ${ecart > 0 ? '+' : ''}${ecart} vs ${precedent}</span></div>`;
+    };
+    document.getElementById('comparaison').innerHTML =
+      ligne('Créés', c.crees, true) + ligne('Terminés', c.termines) + ligne('Solde', c.solde);
+
+    const vide = visibles.length === 0;
+    document.getElementById('vide').hidden = !vide;
+    document.getElementById('blocs').hidden = vide;
+    if (vide) return;
+
+    const liste = aTraiter(visibles, maintenant);
+    document.getElementById('a-traiter').innerHTML = liste.length === 0
+      ? '<li>Rien à relancer.</li>'
+      : liste.map((t) => `
+        <li><span class="titre"><b>${echapper(t.id || '—')}</b> · ${echapper(t.titre)}</span>
+          <span class="statut"><span class="pastille" style="background:${couleurStatut(t.statut)}"></span>${echapper(t.statut)} · ${t.age === null ? '—' : t.age + ' j'}</span></li>`).join('');
+
+    dessiner('g-anneau', optionsAnneau(parStatut(visibles, referentiels.statuts)));
+    dessiner('g-empilees', optionsEmpilees(statutParPersonne(visibles, referentiels.personnes, referentiels.statuts)));
+    dessiner('g-categories', optionsCategories(regrouper(visibles, 'categorie', referentiels.categories, 'Sans catégorie')));
+  }
+
+  function dessiner(id, options) {
+    graphiques[id] = graphiques[id] || echarts.init(document.getElementById(id), null, { renderer: 'svg' });
+    graphiques[id].setOption(options, true);
+    graphiques[id].resize();
+  }
+
+  window.addEventListener('resize', () => Object.values(graphiques).forEach((g) => g.resize()));
 
   document.querySelectorAll('.nav button').forEach((bouton) => {
     bouton.addEventListener('click', () => {

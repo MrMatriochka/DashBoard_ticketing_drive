@@ -92,5 +92,42 @@
   }
   .chip[aria-pressed="true"] { box-shadow: var(--inset); color: var(--navy-900); outline: 1.5px solid var(--blue-500); }
 
+  /* Dashboard */
+  .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--navy-900); }
+  .filtres { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 16px; }
+  .filtre { display: flex; flex-direction: column; gap: 4px; flex: 1 1 160px; font-size: 13px; color: var(--text-muted); }
+  .periodes { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 2px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+  .kpis .card { margin: 0; }
+  .kpi-valeur { font-size: 28px; font-weight: 500; line-height: 1.2; color: var(--navy-900); font-variant-numeric: tabular-nums; }
+  .kpi-libelle { font-size: 13px; color: var(--text-muted); }
+  .kpi.alerte .kpi-valeur { color: #B23B35; }
+
+  .comparaison-lignes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .comp { display: flex; flex-direction: column; }
+  .evolution { font-size: 13px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .mieux { color: #187552; }
+  .moins-bien { color: #B23B35; }
+  .note { margin: 12px 0 0; font-size: 13px; color: var(--text-muted); }
+  .vide { color: var(--text-muted); }
+
+  .bloc { display: grid; gap: 16px; }
+  .bloc .card { margin: 0 0 16px; min-width: 0; }
+  .graphique { width: 100%; height: 260px; }
+
+  .a-traiter { margin: 0; padding: 0; list-style: none; }
+  .a-traiter li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid #DCE3ED; font-size: 14px; }
+  .a-traiter li:last-child { border-bottom: 0; }
+  .a-traiter .titre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .a-traiter .statut { flex-shrink: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .pastille { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; }
+
+  @media (min-width: 600px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 900px) {
+    .kpis { grid-template-columns: repeat(6, 1fr); }
+    .bloc { grid-template-columns: 1.6fr 1fr; }
+  }
+
   .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
 </style>
