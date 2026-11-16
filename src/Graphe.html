@@ -1,0 +1,216 @@
+<script>
+  /* Graphe — arbre Hub → branches → cartes sur deux côtés, avec zoom et vue d'ensemble (sans bibliothèque). */
+  const ZOOM_MIN = 0.4, ZOOM_MAX = 1.6, SEUIL_ENSEMBLE = 0.6, SEUIL_GLISSEMENT = 5;
+  const PALETTE_CATEGORIES = ['#2F6FD0', '#C2410C', '#7C3AED', '#0E7490', '#B45309', '#BE185D'];
+  const STATUTS_CLOS = ['Terminé', 'Rejeté'];
+  // clé du ticket → [libellé du bouton, référentiel, libellé du groupe vide]
+  const REGROUPEMENTS = {
+    statut: ['Statut', 'statuts', 'Sans statut'],
+    categorie: ['Catégorie', 'categories', 'Sans catégorie'],
+    assigne: ['Personne', 'personnes', 'Non assigné'],
+  };
+  const camera = { z: 1, x: 0, y: 0 }; // zoom et déplacement courants
+  const $ = (id) => document.getElementById(id);
+
+  /** Squelette de la vue, posé une fois (aucune donnée du Sheet). */
+  function construireGraphe() {
+    $('vue-graphe').innerHTML = `
+      <div class="graphe-outils">
+        <div class="filtre">Grouper par
+          <div class="seg" role="group" aria-label="Grouper par" id="g-grouper">
+            ${Object.entries(REGROUPEMENTS).map(([cle, [libelle]]) => `<button type="button" data-grouper="${cle}">${libelle}</button>`).join('')}
+          </div>
+        </div>
+        <label class="interrupteur"><input type="checkbox" id="g-clos"> Afficher les clos</label>
+        <div class="zoom-boutons">
+          <button type="button" class="btn btn-icone" id="g-moins" aria-label="Dézoomer">−</button>
+          <button type="button" class="btn btn-icone" id="g-plus" aria-label="Zoomer">+</button>
+          <button type="button" class="btn" id="g-ajuster">Ajuster</button>
+        </div>
+      </div>
+      <div class="vue-arbre" id="vue-arbre">
+        <div class="toile" id="toile"><svg class="liens" id="liens" aria-hidden="true"></svg><div class="arbre" id="arbre"></div></div>
+        <span class="niveau" id="niveau" aria-live="polite"></span>
+      </div>
+      <p class="card vide" id="g-vide" hidden>Aucun ticket pour ces filtres.</p>
+      <div class="legende" id="g-legende"></div>`;
+
+    document.querySelectorAll('#g-grouper button').forEach((b) =>
+      b.addEventListener('click', () => { etat.graphe.grouper = b.dataset.grouper; afficher(); }));
+    $('g-clos').addEventListener('change', (e) => { etat.graphe.clos = e.target.checked; afficher(); });
+    $('g-plus').addEventListener('click', () => zoomer(1.25));
+    $('g-moins').addEventListener('click', () => zoomer(0.8));
+    $('g-ajuster').addEventListener('click', ajuster);
+    $('arbre').addEventListener('click', clicArbre);
+    activerDeplacement($('vue-arbre'));
+    window.addEventListener('resize', () => { if (etat.vue === 'graphe') { tracerLiens(); ajuster(); } });
+  }
+
+  /** Redessine l'arbre (appelée par afficher() quand la vue Graphe est visible). */
+  function afficherGraphe() {
+    const maintenant = new Date();
+    const { tickets, referentiels } = etat.donnees;
+    const { grouper, clos } = etat.graphe;
+    const [, cleReferentiel, libelleVide] = REGROUPEMENTS[grouper];
+
+    document.querySelectorAll('#g-grouper button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.grouper === grouper)));
+    $('g-clos').checked = clos;
+
+    const visibles = filtrer(tickets, etat.filtres, maintenant).filter((t) => clos || !STATUTS_CLOS.includes(t.statut));
+    $('g-vide').hidden = visibles.length > 0;
+    $('vue-arbre').hidden = visibles.length === 0;
+    $('g-legende').hidden = visibles.length === 0;
+    if (visibles.length === 0) return;
+
+    const couleurCategorie = (c) => {
+      const i = referentiels.categories.indexOf(c);
+      return i < 0 ? jeton('--text-muted') : PALETTE_CATEGORIES[i % PALETTE_CATEGORIES.length];
+    };
+    // Groupé par statut : la branche porte déjà le statut, la carte montre donc la catégorie.
+    const couleurCarte = (t) => (grouper === 'statut' ? couleurCategorie(t.categorie) : couleurStatut(t.statut));
+    const couleurBranche = (nom) => (grouper === 'statut' ? couleurStatut(nom) : jeton('--navy-700'));
+    const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+
+    const carte = (t) => {
+      const age = ageJours(t.creeLe, maintenant);
+      return `<button type="button" class="carte" data-ligne="${t.ligne}" style="--c:${couleurCarte(t)}">
+        <span class="carte-l1"><b>${echapper(t.id || '—')}</b><span class="${t.priorite === 'Haute' ? 'prio-haute' : ''}">${echapper(t.priorite || '—')}</span></span>
+        <span class="carte-titre">${echapper(t.titre)}</span>
+        <span class="carte-statut"><span class="pastille" style="background:${couleurStatut(t.statut)}"></span>${echapper(t.statut || '—')} · ${age === null ? '—' : age + ' j'}</span>
+      </button>`;
+    };
+    const bloc = (b) => {
+      const resume = [b.hautes && pluriel(b.hautes, 'haute'), grouper !== 'statut' && b.bloques && pluriel(b.bloques, 'bloqué')]
+        .filter(Boolean).join(' · ');
+      return `<div class="bloc-arbre">
+        <button type="button" class="branche" style="--c:${couleurBranche(b.nom)}">
+          <span class="branche-nom">${echapper(b.nom)}</span><span class="branche-n">${b.n}</span><span class="branche-resume">${resume}</span>
+        </button>
+        <div class="cartes">${b.tickets.map(carte).join('')}</div>
+      </div>`;
+    };
+
+    const { gauche, droite } = repartir(brancher(visibles, grouper, referentiels[cleReferentiel], libelleVide, maintenant));
+    $('arbre').innerHTML = `
+      <div class="cote gauche">${gauche.map(bloc).join('')}</div>
+      <div class="hub"><span>Hub</span><strong>${visibles.length}</strong></div>
+      <div class="cote droite">${droite.map(bloc).join('')}</div>`;
+
+    const palette = grouper === 'statut'
+      ? referentiels.categories.map((c) => [c, couleurCategorie(c)])
+      : referentiels.statuts.map((s) => [s, couleurStatut(s)]);
+    $('g-legende').innerHTML = `Bordure des cartes : ${palette.map(([nom, c]) =>
+      `<span><i style="background:${c}"></i>${echapper(nom)}</span>`).join('')}`;
+
+    tracerLiens();
+    ajuster();
+  }
+
+  /** Liens courbes Hub → branches → cartes, en coordonnées non zoomées (offsets dans .arbre). */
+  function tracerLiens() {
+    const arbre = $('arbre');
+    const position = (el) => {
+      let x = 0, y = 0;
+      for (let e = el; e && e !== arbre; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; }
+      return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+    };
+    const bord = (el, droit) => { const p = position(el); return { x: droit ? p.x + p.w : p.x, y: p.y + p.h / 2 }; };
+    const courbe = (a, b) => { const mx = (a.x + b.x) / 2; return `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`; };
+    const hub = arbre.querySelector('.hub');
+    let versBranches = '', versCartes = '';
+    arbre.querySelectorAll('.bloc-arbre').forEach((bloc) => {
+      const aGauche = !!bloc.closest('.gauche');
+      const branche = bloc.querySelector('.branche');
+      versBranches += courbe(bord(hub, !aGauche), bord(branche, aGauche));
+      bloc.querySelectorAll('.carte').forEach((c) => { versCartes += courbe(bord(branche, !aGauche), bord(c, aGauche)); });
+    });
+    const svg = $('liens');
+    svg.setAttribute('width', arbre.offsetWidth);
+    svg.setAttribute('height', arbre.offsetHeight);
+    svg.innerHTML = `<path class="lien-branche" d="${versBranches}"/><path class="lien-carte" d="${versCartes}"/>`;
+  }
+
+  /* --- Zoom et déplacement --- */
+  function appliquerCamera() {
+    const toile = $('toile');
+    toile.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.z})`;
+    toile.style.setProperty('--k', Math.min(1.6, SEUIL_ENSEMBLE / camera.z)); // étiquettes lisibles en vue d'ensemble
+    const ensemble = camera.z < SEUIL_ENSEMBLE;
+    toile.classList.toggle('ensemble', ensemble);
+    $('niveau').textContent = `${ensemble ? "Vue d'ensemble" : 'Détail'} · ${Math.round(camera.z * 100)} %`;
+  }
+
+  function ajuster() {
+    const vue = $('vue-arbre'), arbre = $('arbre');
+    if (!arbre.offsetWidth) return;
+    camera.z = Math.max(ZOOM_MIN, Math.min(1, vue.clientWidth / arbre.offsetWidth, vue.clientHeight / arbre.offsetHeight));
+    camera.x = (vue.clientWidth - arbre.offsetWidth * camera.z) / 2;
+    camera.y = (vue.clientHeight - arbre.offsetHeight * camera.z) / 2;
+    appliquerCamera();
+  }
+
+  /** Zoom d'un facteur, le point (cx, cy) de la vue restant fixe. */
+  function zoomer(facteur, cx = $('vue-arbre').clientWidth / 2, cy = $('vue-arbre').clientHeight / 2) {
+    const z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, camera.z * facteur));
+    camera.x = cx - (cx - camera.x) * (z / camera.z);
+    camera.y = cy - (cy - camera.y) * (z / camera.z);
+    camera.z = z;
+    appliquerCamera();
+  }
+
+  let glisse = false; // vrai si le dernier geste était un glissement (le clic qui suit est ignoré)
+  function activerDeplacement(vue) {
+    const pointeurs = new Map();
+    let depart = null, ecart = 0;
+    vue.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const r = vue.getBoundingClientRect();
+      zoomer(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    vue.addEventListener('pointerdown', (e) => { pointeurs.set(e.pointerId, e); depart = e; glisse = false; });
+    vue.addEventListener('pointermove', (e) => {
+      const avant = pointeurs.get(e.pointerId);
+      if (!avant) return;
+      pointeurs.set(e.pointerId, e);
+      if (pointeurs.size === 2) { // pincement
+        const [a, b] = [...pointeurs.values()];
+        const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        const r = vue.getBoundingClientRect();
+        if (ecart) zoomer(d / ecart, (a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top);
+        ecart = d;
+        glisse = true;
+        return;
+      }
+      // La capture du pointeur ne démarre qu'après un vrai glissement : sinon le clic n'atteindrait plus la carte.
+      if (!glisse && Math.hypot(e.clientX - depart.clientX, e.clientY - depart.clientY) > SEUIL_GLISSEMENT) {
+        glisse = true;
+        vue.setPointerCapture(e.pointerId);
+        vue.classList.add('en-glissement');
+      }
+      if (glisse) {
+        camera.x += e.clientX - avant.clientX;
+        camera.y += e.clientY - avant.clientY;
+        appliquerCamera();
+      }
+    });
+    const fin = (e) => { pointeurs.delete(e.pointerId); ecart = 0; vue.classList.remove('en-glissement'); };
+    vue.addEventListener('pointerup', fin);
+    vue.addEventListener('pointercancel', fin);
+  }
+
+  /** Clic sur une branche : zoom à 100 % centré dessus ; clic (ou Entrée) sur une carte : fiche. */
+  function clicArbre(e) {
+    if (glisse && e.detail !== 0) return; // e.detail = 0 pour un clic au clavier
+    const vue = $('vue-arbre').getBoundingClientRect();
+    const branche = e.target.closest('.branche');
+    if (branche) {
+      const r = branche.getBoundingClientRect();
+      zoomer(1 / camera.z, r.left + r.width / 2 - vue.left, r.top + r.height / 2 - vue.top);
+      return;
+    }
+    const carte = e.target.closest('.carte');
+    if (!carte) return;
+    const ticket = etat.donnees.tickets.find((t) => String(t.ligne) === carte.dataset.ligne);
+    if (ticket) ouvrirFiche(ticket, carte);
+  }
+</script>

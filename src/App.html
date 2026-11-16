@@ -1,8 +1,12 @@
 <script>
   /** État unique de l'application : vue affichée, données reçues du serveur, filtres du Dashboard. */
-  const etat = { vue: 'dashboard', donnees: null, filtres: { personne: '', categorie: '', periode: null } };
+  const etat = {
+    vue: 'dashboard', donnees: null,
+    filtres: { personne: '', categorie: '', periode: null }, // partagés par Dashboard et Graphe
+    graphe: { grouper: 'statut', clos: false },
+  };
 
-  const TEXTES_ATTENTE = { graphe: 'Graphe — étape 5', tickets: 'Tickets — étape 6' };
+  const TEXTES_ATTENTE = { tickets: 'Tickets — étape 6' };
   const PERIODES = [[7, '7 j'], [30, '30 j'], [90, '90 j'], [null, 'Tout']];
   const KPI = [
     ['ouverts', 'Ouverts'], ['aValider', 'À valider'], ['enCours', 'En cours'],
@@ -85,6 +89,8 @@
       document.getElementById('f-periode').appendChild(bouton);
     });
 
+    construireGraphe();
+
     Object.entries(TEXTES_ATTENTE).forEach(([vue, texte]) => {
       document.getElementById('vue-' + vue).innerHTML = '<div class="card"><h2></h2><p></p></div>';
       document.querySelector(`#vue-${vue} h2`).textContent = texte;
@@ -110,6 +116,7 @@
     });
     // ECharts ne sait pas mesurer un conteneur caché : on ne dessine le Dashboard que s'il est visible.
     if (etat.vue === 'dashboard') afficherDashboard();
+    if (etat.vue === 'graphe') afficherGraphe();
   }
 
   function afficherDashboard() {

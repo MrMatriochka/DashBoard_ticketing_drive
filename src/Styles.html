@@ -129,6 +129,61 @@
     .bloc { grid-template-columns: 1.6fr 1fr; }
   }
 
+  /* Graphe : arbre à deux côtés */
+  .graphe-outils { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-top: 16px; }
+  .seg { display: flex; padding: 4px; border-radius: var(--radius); box-shadow: var(--inset); }
+  .seg button { padding: 6px 12px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-weight: 500; color: var(--text-muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--navy-900); box-shadow: var(--raised); outline: 1.5px solid var(--blue-500); }
+  .interrupteur { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; font-size: 14px; cursor: pointer; }
+  .zoom-boutons { display: flex; gap: 8px; margin-left: auto; }
+  .btn-icone { width: 40px; padding: 8px 0; }
+  .vue-arbre {
+    position: relative; height: 620px; margin-top: 16px; overflow: hidden; border-radius: 14px;
+    background: var(--card); box-shadow: var(--inset); cursor: grab; touch-action: none;
+  }
+  .vue-arbre.en-glissement { cursor: grabbing; }
+  .toile { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  .liens { position: absolute; top: 0; left: 0; z-index: 0; overflow: visible; pointer-events: none; fill: none; }
+  .lien-branche { stroke: #AEB9CA; stroke-width: 2; }
+  .lien-carte { stroke: #C3CCDA; stroke-width: 1.2; }
+  .arbre { position: relative; z-index: 1; display: flex; align-items: center; gap: 140px; padding: 40px; }
+  .cote { display: flex; flex-direction: column; gap: 28px; }
+  .bloc-arbre { display: flex; align-items: center; gap: 70px; }
+  .gauche .bloc-arbre { flex-direction: row-reverse; }
+  .hub {
+    display: flex; flex-shrink: 0; flex-direction: column; align-items: center; justify-content: center;
+    width: 120px; height: 120px; border-radius: 50%; background: var(--navy-900); color: #fff; box-shadow: var(--raised); font-weight: 600;
+  }
+  .hub strong { font-size: 30px; font-weight: 600; line-height: 1.1; }
+  .branche {
+    display: flex; flex-shrink: 0; flex-direction: column; min-width: 150px; padding: 10px 14px; border: 0; border-radius: 14px;
+    background: var(--c); color: #fff; box-shadow: var(--raised); font: inherit; text-align: left; cursor: zoom-in;
+  }
+  .branche-nom { font-weight: 600; }
+  .branche-n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .branche-resume { min-height: 1.4em; font-size: 12px; }
+  .cartes { display: grid; grid-template-columns: repeat(2, 200px); gap: 10px; }
+  .carte {
+    display: flex; flex-direction: column; justify-content: space-between; width: 200px; height: 72px; padding: 8px 10px; overflow: hidden;
+    border: 1px solid var(--border); border-left: 5px solid var(--c); border-radius: 12px; background: #F7F9FC; box-shadow: var(--raised);
+    font: inherit; text-align: left; color: var(--text); cursor: pointer;
+  }
+  .carte > span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .carte-l1 { display: flex !important; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-muted); }
+  .carte-l1 b { color: var(--navy-900); }
+  .prio-haute { color: #B23B35; font-weight: 700; }
+  .carte-titre { font-size: 13px; font-weight: 500; }
+  .carte-statut { font-size: 12px; color: var(--text-muted); }
+  /* Vue d'ensemble : seulement le Hub et les branches, agrandis pour rester lisibles */
+  .ensemble .carte, .ensemble .lien-carte { visibility: hidden; }
+  .ensemble .branche, .ensemble .hub { transform: scale(var(--k)); }
+  .gauche .branche { transform-origin: right center; }
+  .droite .branche { transform-origin: left center; }
+  .niveau { position: absolute; bottom: 10px; left: 12px; padding: 4px 10px; border-radius: 999px; background: var(--card); box-shadow: var(--raised); font-size: 12px; color: var(--text-muted); }
+  .legende { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 13px; color: var(--text-muted); }
+  .legende i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; }
+  @media (max-width: 600px) { .vue-arbre { height: 70vh; } .zoom-boutons { margin-left: 0; } }
+
   /* Fiche : panneau latéral, au-dessus du contenu */
   .fiche {
     position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 360px; overflow: auto; padding: 20px;
