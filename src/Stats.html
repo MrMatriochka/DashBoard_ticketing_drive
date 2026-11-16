@@ -1,0 +1,105 @@
+<script>
+  /*
+   * Stats — règles de calcul du Dashboard. Fonctions pures : pas de DOM, pas de Date.now() ;
+   * « maintenant » est toujours passé en paramètre. Testées dans tests/Stats.test.js.
+   */
+  const JOUR = 86400000;
+  // shortcut: liste recopiée de STATUTS (Setup.js, côté serveur) ; à réunir si les statuts deviennent modifiables.
+  const STATUTS_OUVERTS = ['À valider', 'Validé', 'En cours', 'Bloqué'];
+  const HORS_REFERENTIEL = 'Hors référentiel';
+
+  const estOuvert = (t) => STATUTS_OUVERTS.includes(t.statut);
+
+  /** Jours pleins écoulés depuis une date ISO ; null sans date. */
+  function ageJours(iso, maintenant) {
+    return iso ? Math.floor((maintenant - new Date(iso)) / JOUR) : null;
+  }
+
+  /** Âge dans [debut, fin[ jours (fenêtres des 30 derniers jours, des 30 précédents…). */
+  const entre = (age, debut, fin) => age !== null && age >= debut && age < fin;
+
+  function echapper(texte) {
+    const entites = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(texte).replace(/[&<>"']/g, (c) => entites[c]);
+  }
+
+  /** Filtres globaux : personne = assigné ; période = création dans les N derniers jours (null = Tout). */
+  function filtrer(tickets, { personne, categorie, periode }, maintenant) {
+    return tickets.filter((t) =>
+      (!personne || t.assigne === personne) &&
+      (!categorie || t.categorie === categorie) &&
+      (!periode || entre(ageJours(t.creeLe, maintenant), 0, periode)));
+  }
+
+  /** « Terminés (30 j) » ignore le filtre de période : calculé sur ticketsSansPeriode. */
+  function kpis(tickets, ticketsSansPeriode, maintenant) {
+    const ouverts = tickets.filter(estOuvert);
+    const compter = (statut) => tickets.filter((t) => t.statut === statut).length;
+    return {
+      ouverts: ouverts.length,
+      aValider: compter('À valider'),
+      enCours: compter('En cours'),
+      bloques: compter('Bloqué'),
+      dormants: ouverts.filter((t) => entre(ageJours(t.majLe || t.creeLe, maintenant), 15, Infinity)).length,
+      termines30: ticketsSansPeriode
+        .filter((t) => t.statut === 'Terminé' && entre(ageJours(t.majLe, maintenant), 0, 30)).length,
+    };
+  }
+
+  /** 30 derniers jours contre les 30 précédents. « Terminé le » est approché par majLe. */
+  function comparaison(tickets, maintenant) {
+    const fenetre = (debut) => {
+      const crees = tickets.filter((t) => entre(ageJours(t.creeLe, maintenant), debut, debut + 30)).length;
+      const termines = tickets.filter((t) =>
+        t.statut === 'Terminé' && entre(ageJours(t.majLe, maintenant), debut, debut + 30)).length;
+      return { crees, termines, solde: termines - crees };
+    };
+    const actuel = fenetre(0);
+    const precedent = fenetre(30);
+    const paire = (cle) => ({ actuel: actuel[cle], precedent: precedent[cle] });
+    return { crees: paire('crees'), termines: paire('termines'), solde: paire('solde') };
+  }
+
+  function tendance(actuel, precedent) {
+    return actuel > precedent ? 'hausse' : actuel < precedent ? 'baisse' : 'egal';
+  }
+
+  /** Tickets ouverts à relancer : bloqués d'abord, puis du plus ancien au plus récent (sans date en dernier). */
+  function aTraiter(tickets, maintenant, n = 5) {
+    const age = (t) => ageJours(t.creeLe, maintenant) ?? -Infinity;
+    return tickets.filter(estOuvert)
+      .sort((a, b) => (b.statut === 'Bloqué') - (a.statut === 'Bloqué') || age(b) - age(a))
+      .slice(0, n)
+      .map((t) => ({ id: t.id, titre: t.titre, statut: t.statut, age: ageJours(t.creeLe, maintenant) }));
+  }
+
+  function parStatut(tickets, statuts) {
+    return statuts.map((nom) => ({ nom, n: tickets.filter((t) => t.statut === nom).length }));
+  }
+
+  /** Nom du groupe d'une valeur : elle-même si connue, sinon libelleVide ou « Hors référentiel ». */
+  const groupe = (valeur, connus, libelleVide) =>
+    !valeur ? libelleVide : connus.includes(valeur) ? valeur : HORS_REFERENTIEL;
+
+  /** Les groupes connus (même vides), puis libelleVide et « Hors référentiel » seulement s'ils servent. */
+  const colonnes = (noms, connus, libelleVide) =>
+    [...connus, ...[libelleVide, HORS_REFERENTIEL].filter((g) => noms.includes(g))];
+
+  function regrouper(tickets, cle, connus, libelleVide) {
+    const noms = tickets.map((t) => groupe(t[cle], connus, libelleVide));
+    return colonnes(noms, connus, libelleVide).map((nom) => ({ nom, n: noms.filter((x) => x === nom).length }));
+  }
+
+  function statutParPersonne(tickets, personnes, statuts) {
+    const connus = tickets.filter((t) => statuts.includes(t.statut));
+    const noms = connus.map((t) => groupe(t.assigne, personnes, 'Non assigné'));
+    const cols = colonnes(noms, personnes, 'Non assigné');
+    return {
+      personnes: cols,
+      series: statuts.map((statut) => ({
+        statut,
+        valeurs: cols.map((p) => connus.filter((t, i) => t.statut === statut && noms[i] === p).length),
+      })),
+    };
+  }
+</script>
