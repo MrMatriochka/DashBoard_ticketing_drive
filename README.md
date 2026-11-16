@@ -278,8 +278,7 @@ Les filtres : **personne assignée**, **catégorie**, **période** de création 
 - [x] **2** — `Repository.js` + `getTickets()` : lecture tolérante aux saisies manuelles
 - [x] **3** — Squelette, charte graphique, navigation, gestion d'erreur
 - [x] **4** — Dashboard : KPI, comparaison 30 j, liste à traiter, graphiques, filtres
-- [x] **5** — Graphe : arbre à deux côtés, zoom, vue d'ensemble, fiche latérale *(en cours de validation)*
-- [ ] **6** — Tickets : liste, création, changement de statut, suppression (verrou `LockService`, validation serveur)
+- [x] **5** — Graphe : arbre à deux côtés, zoom, vue d'ensemble, fiche latérale- [ ] **6** — Tickets : liste, création, changement de statut, suppression (verrou `LockService`, validation serveur)
 - [ ] **7** — Déploiement versionné et intégration dans Google Sites
 
 ---
