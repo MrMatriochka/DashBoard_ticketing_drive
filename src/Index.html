@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <?!= include('Styles') ?>
+</head>
+<body>
+  <header class="entete">
+    <div class="conteneur entete-contenu">
+      <h1>Hub tickets</h1>
+      <span id="compteur"></span>
+    </div>
+  </header>
+
+  <main class="conteneur">
+    <div id="bandeau-demo" class="demo" hidden>Données de démonstration — jeu de test</div>
+
+    <nav class="nav" aria-label="Vues">
+      <button type="button" data-vue="dashboard">Dashboard</button>
+      <button type="button" data-vue="graphe">Graphe</button>
+      <button type="button" data-vue="tickets">Tickets</button>
+    </nav>
+
+    <p id="etat" role="status"></p>
+
+    <section id="vue-dashboard" hidden></section>
+    <section id="vue-graphe" hidden></section>
+    <section id="vue-tickets" hidden></section>
+  </main>
+
+  <?!= include('App') ?>
+</body>
+</html>

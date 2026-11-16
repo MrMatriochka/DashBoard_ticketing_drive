@@ -1,0 +1,96 @@
+<style>
+  /* Jetons de la charte (CLAUDE.md). */
+  :root {
+    --navy-900: #0B1F4B;
+    --navy-700: #1C3D7A;
+    --blue-500: #2F6FD0;
+    --sky-300: #8FBCEB;
+    --surface: #E9EEF5;
+    --card: #EEF2F8;
+    --shadow-dark: rgba(163, 177, 198, .55);
+    --shadow-light: rgba(255, 255, 255, .9);
+    --text: #1A2333;
+    --text-muted: #5B6678;
+    --border: #CBD4E1;
+    /* statuts */
+    --st-a-valider: #8A94A6;
+    --st-valide: #3D7DD8;
+    --st-en-cours: #5B5FC7;
+    --st-bloque: #D2544E;
+    --st-termine: #1F9E89;
+    --st-rejete: #4A4F5A;
+    /* Relief : ce qu'on clique ; creusé : ce qu'on remplit ou ce qui est sélectionné. */
+    --raised: 5px 5px 12px var(--shadow-dark), -5px -5px 12px var(--shadow-light);
+    --inset: inset 3px 3px 7px var(--shadow-dark), inset -3px -3px 7px var(--shadow-light);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--text);
+    font-family: Inter, system-ui, sans-serif; /* repli si Google Fonts est bloqué */
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .conteneur { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  :focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
+
+  /* En-tête */
+  .entete { background: var(--navy-900); color: #fff; }
+  .entete-contenu { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; padding-bottom: 14px; }
+  .entete h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+  #compteur { font-size: 13px; opacity: .8; font-variant-numeric: tabular-nums; }
+
+  /* Bandeau démo : creusé */
+  .demo {
+    margin-top: 16px; padding: 8px 14px; border-radius: 10px;
+    background: #FFF4D6; color: #5A4300; border: 1px solid #E8D18F;
+    box-shadow: var(--inset); font-size: 13px; font-weight: 500;
+  }
+
+  /* Navigation : rail creusé, bouton actif en relief + liseré bleu */
+  .nav { display: flex; margin-top: 16px; padding: 4px; border-radius: var(--radius); box-shadow: var(--inset); }
+  .nav button {
+    flex: 1; padding: 9px 0; border: 0; border-radius: 9px; background: transparent;
+    font: inherit; font-weight: 500; color: var(--text-muted); cursor: pointer;
+  }
+  .nav button[aria-current="page"] {
+    background: var(--card); color: var(--navy-900);
+    box-shadow: var(--raised); outline: 1.5px solid var(--blue-500);
+  }
+  .nav button:focus-visible { outline: 2px solid var(--blue-500); }
+
+  #etat { color: var(--text-muted); }
+  #etat:empty { display: none; }
+
+  /* Composants */
+  .card { background: var(--card); border-radius: 14px; box-shadow: var(--raised); padding: 16px; margin: 16px 0; }
+  .kpi { font-variant-numeric: tabular-nums; }
+
+  .btn {
+    padding: 10px 16px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--card); box-shadow: var(--raised); color: var(--navy-900);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .btn:active { box-shadow: var(--inset); }
+  .btn-primary { background: var(--blue-500); border-color: var(--blue-500); color: #fff; }
+
+  .field {
+    width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); box-shadow: var(--inset); color: var(--text); font: inherit;
+  }
+
+  .chip {
+    padding: 6px 12px; border-radius: 999px; border: 0; background: var(--card);
+    box-shadow: var(--raised); color: var(--text-muted); font: inherit; font-weight: 500; cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { box-shadow: var(--inset); color: var(--navy-900); outline: 1.5px solid var(--blue-500); }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+</style>
