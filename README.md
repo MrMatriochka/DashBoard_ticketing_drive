@@ -248,7 +248,12 @@ Les filtres : **personne assignée**, **catégorie**, **période** de création 
 - Sous 60 % : vue d'ensemble (compteurs) ; clic sur une branche pour zoomer dessus.
 - Clic — ou **Tab** puis **Entrée** — sur une carte : fiche détaillée ; **Échap** pour la fermer.
 
-**Tickets** — liste, création et modification depuis le site : *à venir* (voir la feuille de route).
+**Tickets**
+- **Recherche instantanée** sur l'ID, le titre et la description, insensible aux accents et aux majuscules.
+- **Puces** avec compteurs : *Ouverts*, *À valider* (la file de triage), *Bloqués*, *Tous*, et **⚠ À corriger** (lignes du Sheet avec une anomalie : ID manquant, motif absent…), affichée seulement s'il y en a.
+- **Tri** par clic sur un en-tête de colonne (second clic = sens inverse) ; les cases vides restent toujours en dernier.
+- Clic sur une ligne — ou **Entrée** sur son titre — pour ouvrir la fiche. Sur mobile, chaque ligne devient une carte.
+- Création, changement de statut et suppression depuis le site : *à venir* (voir la feuille de route).
 
 ---
 
@@ -278,7 +283,8 @@ Les filtres : **personne assignée**, **catégorie**, **période** de création 
 - [x] **2** — `Repository.js` + `getTickets()` : lecture tolérante aux saisies manuelles
 - [x] **3** — Squelette, charte graphique, navigation, gestion d'erreur
 - [x] **4** — Dashboard : KPI, comparaison 30 j, liste à traiter, graphiques, filtres
-- [x] **5** — Graphe : arbre à deux côtés, zoom, vue d'ensemble, fiche latérale- [ ] **6** — Tickets : liste, création, changement de statut, suppression (verrou `LockService`, validation serveur)
+- [x] **5** — Graphe : arbre à deux côtés, zoom, vue d'ensemble, fiche latérale- [x] **6a** — Tickets : liste cherchable et triable, puce « À corriger », fiche
+- [ ] **6b** — Écriture depuis le site : création, changement de statut, suppression (verrou `LockService`, validation serveur)
 - [ ] **7** — Déploiement versionné et intégration dans Google Sites
 
 ---

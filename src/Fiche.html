@@ -39,7 +39,7 @@
     if (!rendreFocus || !origineFiche) return;
     // Si l'arbre ou la liste ont été redessinés entre-temps, l'élément d'origine a été remplacé : on retrouve le nouveau.
     const cible = document.contains(origineFiche) ? origineFiche
-      : document.querySelector(`:is(.carte, .lien-ticket)[data-ligne="${origineFiche.dataset.ligne}"]`);
+      : document.querySelector(`#vue-${etat.vue} :is(.carte, .lien-ticket)[data-ligne="${origineFiche.dataset.ligne}"]`);
     if (cible) cible.focus();
   }
 
